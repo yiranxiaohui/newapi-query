@@ -1,15 +1,12 @@
 function proxyFetch(url, options = {}) {
-  if (import.meta.env.DEV) {
-    const parsed = new URL(url);
-    return fetch('/cors-proxy' + parsed.pathname + parsed.search, {
-      ...options,
-      headers: {
-        ...options.headers,
-        'X-Proxy-Target': parsed.origin,
-      },
-    });
-  }
-  return fetch(url, options);
+  const parsed = new URL(url);
+  return fetch('/cors-proxy' + parsed.pathname + parsed.search, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'X-Proxy-Target': parsed.origin,
+    },
+  });
 }
 
 export async function fetchTokenLogs(apiBase, tokenKey, page = 1, pageSize = 20) {
