@@ -59,7 +59,7 @@ export default function TokenPanel({ showToast }) {
     try {
       const [data, quota] = await Promise.all([
         fetchTokenLogs(base, key, page, size),
-        fetchQuotaInfo(base, key),
+        fetchQuotaInfo(base, key).catch(e => { console.warn('[额度查询]', e.message); return null; }),
       ]);
       const list = (data?.logs || data || []).map(log => {
         let extra = {};
@@ -179,7 +179,7 @@ export default function TokenPanel({ showToast }) {
                 </div>
                 <div className="quota-stat-text">
                   <span className="quota-stat-label">总额度</span>
-                  <span className="quota-stat-value total">{formatQuota(quotaInfo.quota)}</span>
+                  <span className="quota-stat-value total">{formatQuota(quotaInfo.total)}</span>
                 </div>
               </div>
               <div className="quota-stat">
@@ -188,7 +188,7 @@ export default function TokenPanel({ showToast }) {
                 </div>
                 <div className="quota-stat-text">
                   <span className="quota-stat-label">已用额度</span>
-                  <span className="quota-stat-value used">{formatQuota(quotaInfo.used_quota)}</span>
+                  <span className="quota-stat-value used">{formatQuota(quotaInfo.used)}</span>
                 </div>
               </div>
               <div className="quota-stat">
@@ -197,7 +197,7 @@ export default function TokenPanel({ showToast }) {
                 </div>
                 <div className="quota-stat-text">
                   <span className="quota-stat-label">剩余额度</span>
-                  <span className="quota-stat-value remain">{formatQuota((quotaInfo.quota || 0) - (quotaInfo.used_quota || 0))}</span>
+                  <span className="quota-stat-value remain">{formatQuota(quotaInfo.remaining)}</span>
                 </div>
               </div>
             </div>
