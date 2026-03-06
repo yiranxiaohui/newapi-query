@@ -21,7 +21,7 @@ export async function fetchTokenLogs(apiBase, tokenKey, page = 1, pageSize = 20)
   return data.data;
 }
 
-export async function fetchTokenQuota(apiBase, tokenKey) {
+async function fetchUserSelf(apiBase, tokenKey) {
   const resp = await proxyFetch(`${apiBase}/api/user/self`, {
     headers: { 'Authorization': tokenKey },
   });
@@ -30,4 +30,39 @@ export async function fetchTokenQuota(apiBase, tokenKey) {
     throw new Error(data.message || `请求失败 (${resp.status})`);
   }
   return data.data;
+}
+
+async function fetchBillingSubscription(apiBase, tokenKey) {
+  const resp = await proxyFetch(`${apiBase}/v1/dashboard/billing/subscription`, {
+    headers: { 'Authorization': `Bearer ${tokenKey}` },
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    throw new Error(data.error?.message || `请求失败 (${resp.status})`);
+  }
+  const totalUsd = data.hard_limit_usd ?? data.system_hard_limit_usd ?? 0;
+  const usedUsd = totalUsd - (data.soft_limit_usd ?? totalUsd);
+  return {
+    quota: Math.round(totalUsd * 500000),
+    used_quota: Math.round(usedUsd * 500000),
+  };
+}
+
+export async function fetchQuotaInfo(apiBase, tokenKey) {
+  // 策略1: 尝试 /api/user/self（Session Token 可用时生效）
+  try {
+    const user = await fetchUserSelf(apiBase, tokenKey);
+    if (user && user.quota !== undefined) return user;
+  } catch (e) {
+    console.warn('[额度查询] /api/user/self 失败:', e.message);
+  }
+
+  // 策略2: 尝试 OpenAI 兼容的 billing 端点（API Token 可用）
+  try {
+    return await fetchBillingSubscription(apiBase, tokenKey);
+  } catch (e) {
+    console.warn('[额度查询] /v1/dashboard/billing/subscription 失败:', e.message);
+  }
+
+  return null;
 }

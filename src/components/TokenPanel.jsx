@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fetchTokenLogs, fetchTokenQuota } from '../api';
+import { fetchTokenLogs, fetchQuotaInfo } from '../api';
 import { formatTime, formatQuota, TYPE_MAP, TYPE_CLASS } from '../utils';
 
 const STORAGE_KEY = 'newapi_config';
@@ -31,6 +31,7 @@ export default function TokenPanel({ showToast }) {
   const [configCollapsed, setConfigCollapsed] = useState(false);
   const [queried, setQueried] = useState(false);
   const [quotaInfo, setQuotaInfo] = useState(null);
+  const [quotaError, setQuotaError] = useState(false);
 
   function saveConfig() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiBase: apiBase.trim(), tokenKey: tokenKey.trim() }));
@@ -53,11 +54,12 @@ export default function TokenPanel({ showToast }) {
     setError('');
     setLoading(true);
     setQueried(true);
+    setQuotaError(false);
 
     try {
       const [data, quota] = await Promise.all([
         fetchTokenLogs(base, key, page, size),
-        !queried ? fetchTokenQuota(base, key).catch(() => null) : Promise.resolve(quotaInfo),
+        fetchQuotaInfo(base, key),
       ]);
       const list = (data?.logs || data || []).map(log => {
         let extra = {};
@@ -70,7 +72,11 @@ export default function TokenPanel({ showToast }) {
       setTotal(data?.total ?? list.length);
       setCurrentPage(page);
       setConfigCollapsed(true);
-      if (quota !== undefined) setQuotaInfo(quota);
+      if (quota) {
+        setQuotaInfo(quota);
+      } else {
+        setQuotaError(true);
+      }
     } catch (e) {
       setError(e.message);
       setLogs([]);
@@ -194,6 +200,12 @@ export default function TokenPanel({ showToast }) {
                   <span className="quota-stat-value remain">{formatQuota((quotaInfo.quota || 0) - (quotaInfo.used_quota || 0))}</span>
                 </div>
               </div>
+            </div>
+          )}
+          {quotaError && !quotaInfo && (
+            <div className="quota-warn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              无法获取额度信息，当前 Token 可能没有查询余额的权限
             </div>
           )}
 
